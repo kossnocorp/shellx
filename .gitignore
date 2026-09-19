@@ -11,5 +11,12 @@ node_modules/
 /pkgs/*/dist/
 /pkgs/vscode/*.vsix
 
+# Astro
+.astro/
+
+# Cloudflare
+.wrangler/
+worker-configuration.d.ts
+
 # Git Worktrees
 crossshell.wt.code-workspace

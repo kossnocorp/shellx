@@ -9,13 +9,17 @@ config_roots = ["pkgs/*"]
 
 # Stack ########################################################################
 
-# ...
+node = "lts"
+"npm:pnpm" = "latest"
 
 
 # Tools ########################################################################
 
 cargo-binstall = "latest" # Install cargo binaries
 shfmt = "latest"
+git-cliff = "latest" # Change log generator
+sccache = "latest" # Rust compiler cache
+fnox = "latest" # Secrets
 
 
 # Settings #####################################################################
@@ -26,6 +30,12 @@ idiomatic_version_file_enable_tools = ["rust"] # Use rust-toolchain.toml
 
 
 # Tasks ########################################################################
+
+[tasks.install]
+depends = ["install/pnpm"]
+
+[tasks."install/pnpm"]
+run = "pnpm install"
 
 # Build =========================================================================
 

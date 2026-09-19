@@ -11,6 +11,10 @@ repository = "https://github.com/kossnocorp/shellx"
 name = "shx"
 path = "src/main.rs"
 
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/shx-v{ version }-{ target }{ binary-ext }"
+pkg-fmt = "bin"
+
 [dependencies]
 anyhow = "1.0.104"
 usage = { package = "usage-rs", version = "6" }
