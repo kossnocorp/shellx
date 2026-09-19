@@ -110,7 +110,7 @@ impl ShxStyle {
     }
 }
 
-fn render(document: &Document<'_>, out: &mut impl Write) -> io::Result<()> {
+pub(super) fn render(document: &Document<'_>, out: &mut impl Write) -> io::Result<()> {
     let mut stack = Vec::with_capacity(document.depth);
     let mut style = ShxStyle::default();
     let mut emitted = style;
