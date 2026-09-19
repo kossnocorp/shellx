@@ -1,0 +1,47 @@
+# Monorepo #####################################################################
+
+monorepo_root = true
+[monorepo]
+config_roots = ["pkgs/*"]
+
+[tools]
+
+
+# Stack ########################################################################
+
+# ...
+
+
+# Tools ########################################################################
+
+# Tools
+cargo-binstall = "latest" # Install cargo binaries
+
+
+# Settings #####################################################################
+
+[settings]
+lockfile = true
+idiomatic_version_file_enable_tools = ["rust"] # Use rust-toolchain.toml
+
+
+# Tasks ########################################################################
+
+
+# Test =========================================================================
+
+# test ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[tasks.test]
+run = "cargo nextest run --no-tests pass"
+
+# test:watch ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[tasks."test:watch"]
+run = "bacon nextest"
+
+# test/snapshots:review ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[tasks."test/snapshots:review"]
+run = "cargo insta test --review"
+
+# test/snapshots:approve ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[tasks."test/snapshots:approve"]
+run = "cargo insta approve"

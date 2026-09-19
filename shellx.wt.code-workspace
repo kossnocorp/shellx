@@ -1,0 +1,24 @@
+{
+  "folders": [
+    {
+      "name": "🟢 main",
+      "path": ".",
+    },
+  ],
+  "settings": {
+    "orchardist.discriminatorHistory": [
+      "main",
+      null
+    ],
+    "orchardist.discriminatorPatterns": [
+      "/home/koss/code/shellx/.*",
+      "/home/koss/code/shellx/**"
+    ],
+    "workbench.editor.customLabels.enabled": true,
+    "workbench.editor.customLabels.patterns": {
+      "/home/koss/code/shellx/.*": "🟢 ${filename}",
+      "/home/koss/code/shellx/**": "🟢 ${filename}.${extname}"
+    },
+    "orchardist.archivedWorktrees": [],
+  },
+}

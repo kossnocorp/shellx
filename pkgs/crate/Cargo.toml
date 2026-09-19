@@ -1,0 +1,16 @@
+[package]
+name = "shellx"
+version = "0.0.0"
+edition = "2024"
+description = "SHX, the JSX for shell scripts"
+authors = ["Sasha Koss <koss@nocorp.me>"]
+license = "MIT"
+repository = "https://github.com/kossnocorp/shellx"
+
+[[bin]]
+name = "shx"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0.104"
+usage = { package = "usage-rs", version = "6" }
