@@ -16,7 +16,7 @@ config_roots = ["pkgs/*"]
 
 # Tools
 cargo-binstall = "latest" # Install cargo binaries
-
+shfmt = "latest"
 
 # Settings #####################################################################
 
