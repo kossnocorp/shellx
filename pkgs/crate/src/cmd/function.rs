@@ -20,7 +20,7 @@ impl Run for ShxCmdFn {
     }
 }
 
-fn identifier(name: &str) -> bool {
+pub(super) fn identifier(name: &str) -> bool {
     let mut bytes = name.bytes();
     bytes
         .next()

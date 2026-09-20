@@ -4,13 +4,16 @@ use crate::prelude::*;
 pub struct ShxCmdRender {
     #[usage()]
     pub code: String,
+    /// Positional values or name=value pairs for placeholders
+    #[usage()]
+    pub arguments: Vec<String>,
 }
 
 impl Run for ShxCmdRender {
     type Output = Result<()>;
 
     fn run(self) -> Self::Output {
-        let document = parser::parse(&self.code);
+        let document = super::interpolate::interpolate(parser::parse(&self.code), &self.arguments)?;
         let mut stdout = io::BufWriter::new(io::stdout().lock());
         if std::env::var_os("NO_COLOR").is_some_and(|value| !value.is_empty()) {
             for node in &document.nodes {

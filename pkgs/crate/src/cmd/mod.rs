@@ -4,6 +4,7 @@ mod print;
 use print::*;
 mod function;
 use function::*;
+mod interpolate;
 
 #[derive(Subcommands)]
 #[usage(run)]
