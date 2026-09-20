@@ -32,12 +32,14 @@ impl Run for ShxCmdRender {
 struct ShxStyle {
     attributes: u8,
     color: u8,
+    bright: bool,
 }
 
 impl ShxStyle {
     fn apply(&mut self, tag: ShxNodeTag) {
         match tag {
             ShxNodeTag::Reset => *self = Self::default(),
+            ShxNodeTag::Bright => self.bright = true,
 
             ShxNodeTag::Bold
             | ShxNodeTag::Dim
@@ -54,13 +56,23 @@ impl ShxStyle {
         }
     }
 
+    fn foreground(self) -> u8 {
+        if self.bright && (1..=8).contains(&self.color) {
+            self.color + 8
+        } else {
+            self.color
+        }
+    }
+
     fn write_transition(self, previous: Self, out: &mut impl Write) -> io::Result<()> {
-        if self == previous {
+        let foreground = self.foreground();
+        let previous_foreground = previous.foreground();
+        if self.attributes == previous.attributes && foreground == previous_foreground {
             return Ok(());
         }
 
-        let reset =
-            previous.attributes & !self.attributes != 0 || (previous.color != 0 && self.color == 0);
+        let reset = previous.attributes & !self.attributes != 0
+            || (previous_foreground != 0 && foreground == 0);
 
         let attributes = if reset {
             self.attributes
@@ -68,8 +80,8 @@ impl ShxStyle {
             self.attributes & !previous.attributes
         };
 
-        let color = if reset || self.color != previous.color {
-            self.color
+        let color = if reset || foreground != previous_foreground {
+            foreground
         } else {
             0
         };
@@ -100,8 +112,9 @@ impl ShxStyle {
                 sequence[len] = b';';
                 len += 1;
             }
-            sequence[len] = b'3';
-            sequence[len + 1] = b'0' + color - 1;
+            // Colors 1–8 use SGR 30–37; bright colors 9–16 use SGR 90–97.
+            sequence[len] = if color > 8 { b'9' } else { b'3' };
+            sequence[len + 1] = b'0' + (color - 1) % 8;
             len += 2;
         }
 
@@ -143,6 +156,36 @@ mod tests {
     fn renders_nested_styles_and_reset() {
         for (source, expected) in [
             ("Hello world", "Hello world"),
+            ("<gray>gray</gray>", "\x1b[90mgray\x1b[0m"),
+            (
+                "<bright><black>gray</black></bright>",
+                "\x1b[90mgray\x1b[0m",
+            ),
+            (
+                "<bright-black>x</bright-black>",
+                "<bright-black>x</bright-black>",
+            ),
+            ("<bright>plain</bright>", "plain"),
+            (
+                "<black>a<bright>b</bright>c</black>",
+                "\x1b[30ma\x1b[90mb\x1b[30mc\x1b[0m",
+            ),
+            (
+                "<bright><red>a<reset>b</reset>c</red></bright>",
+                "\x1b[91ma\x1b[0mb\x1b[91mc\x1b[0m",
+            ),
+            (
+                "<bright><bold><gray>x</gray></bold></bright>",
+                "\x1b[1;90mx\x1b[0m",
+            ),
+            (
+                "<red>a<gray>b</gray>c</red>",
+                "\x1b[31ma\x1b[90mb\x1b[31mc\x1b[0m",
+            ),
+            (
+                "<gray>a<reset>b</reset><bold>c</bold>d</gray>",
+                "\x1b[90ma\x1b[0mb\x1b[1;90mc\x1b[0;90md\x1b[0m",
+            ),
             ("<red>x</bold>", "<red>x</bold>"),
             ("<nope><red>x</red></nope>", "<nope>\x1b[31mx\x1b[0m</nope>"),
             ("<red>x</bold>y</red>", "\x1b[31mx</bold>y\x1b[0m"),
@@ -154,11 +197,11 @@ mod tests {
             ),
             (
                 "<bright><red>Hello, <italic>world!</italic></red></bright>",
-                "\x1b[1;31mHello, \x1b[3mworld!\x1b[0m",
+                "\x1b[91mHello, \x1b[3mworld!\x1b[0m",
             ),
             (
                 "<bright><red>Hello, <reset>world!</reset></red></bright>",
-                "\x1b[1;31mHello, \x1b[0mworld!",
+                "\x1b[91mHello, \x1b[0mworld!",
             ),
             (
                 "<red>a<bold>b</bold>c</red>d",
@@ -178,6 +221,29 @@ mod tests {
             let mut output = Vec::new();
             render(&parser::parse(source), &mut output).unwrap();
             assert_eq!(output, expected.as_bytes(), "{source}");
+        }
+    }
+
+    #[test]
+    fn bright_palette_is_independent_of_tag_order() {
+        for (index, color) in [
+            "black", "red", "green", "yellow", "blue", "magenta", "cyan", "white",
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            for source in [
+                format!("<bright><{color}>x</{color}></bright>"),
+                format!("<{color}><bright>x</bright></{color}>"),
+            ] {
+                let mut output = Vec::new();
+                render(&parser::parse(&source), &mut output).unwrap();
+                assert_eq!(
+                    output,
+                    format!("\x1b[{}mx\x1b[0m", 90 + index).as_bytes(),
+                    "{source}"
+                );
+            }
         }
     }
 

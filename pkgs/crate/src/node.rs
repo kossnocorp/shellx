@@ -8,7 +8,7 @@ pub enum ShxNode<'source_code> {
     Close,
 }
 
-/// Compact tags supported by the SHX grammar. `bright` is an alias for bold.
+/// Compact tags supported by the SHX grammar.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(u8)]
 pub enum ShxNodeTag {
@@ -29,13 +29,16 @@ pub enum ShxNodeTag {
     Magenta,
     Cyan,
     White,
+    Gray,
+    Bright,
 }
 
 impl ShxNodeTag {
     pub(super) fn parse(name: &str) -> Option<Self> {
         Some(match name {
             "reset" => Self::Reset,
-            "bold" | "bright" => Self::Bold,
+            "bold" => Self::Bold,
+            "bright" => Self::Bright,
             "dim" => Self::Dim,
             "italic" => Self::Italic,
             "underline" => Self::Underline,
@@ -51,6 +54,7 @@ impl ShxNodeTag {
             "magenta" => Self::Magenta,
             "cyan" => Self::Cyan,
             "white" => Self::White,
+            "gray" => Self::Gray,
             _ => return None,
         })
     }
