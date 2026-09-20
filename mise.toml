@@ -31,13 +31,16 @@ idiomatic_version_file_enable_tools = ["rust"] # Use rust-toolchain.toml
 
 # Tasks ########################################################################
 
+# install ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 [tasks.install]
 depends = ["install/pnpm"]
 
+# install/pnpm ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 [tasks."install/pnpm"]
 run = "pnpm install"
 
-# Build =========================================================================
+
+# Build ========================================================================
 
 # build ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 [tasks.build]
@@ -46,6 +49,14 @@ run = "cargo build"
 # build:release ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 [tasks."build:release"]
 run = "cargo build --release"
+
+
+# Symlink ======================================================================
+
+# symlink ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[tasks.symlink]
+run = "ln -sf ./target/release/shx ~/.local/bin/shx"
+depends = ["build:release"]
 
 
 # Test =========================================================================
@@ -62,6 +73,6 @@ run = "bacon nextest"
 [tasks."test/snapshots:review"]
 run = "cargo insta test --review"
 
-# test/snapshots:approve ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# test/snapshots:approve ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 [tasks."test/snapshots:approve"]
 run = "cargo insta approve"
