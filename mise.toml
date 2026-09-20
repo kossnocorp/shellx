@@ -55,7 +55,7 @@ run = "cargo build --release"
 
 # symlink ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 [tasks.symlink]
-run = "ln -sf ./target/release/shx ~/.local/bin/shx"
+run = "ln -sf $(pwd)/target/release/shx $HOME/.local/bin/shx"
 depends = ["build:release"]
 
 
