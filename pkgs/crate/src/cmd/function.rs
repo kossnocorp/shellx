@@ -174,6 +174,16 @@ mod tests {
     }
 
     #[test]
+    fn attributes_work_in_colored_and_plain_functions() {
+        let code = "<span fg=red bg=gray bold>{0}</span>";
+        assert_eq!(
+            call(code, &["Hello"], false).stdout,
+            b"\x1b[1;31;100mHello\x1b[0m\n"
+        );
+        assert_eq!(call(code, &["Hello"], true).stdout, b"Hello\n");
+    }
+
+    #[test]
     fn inferred_arguments_and_nested_styles() {
         let code = "<red>Hello, <green>{0}</green>! {1}, {0}</red>";
         let output = call(code, &["Sasha", "world"], false);

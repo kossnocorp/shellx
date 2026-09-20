@@ -8,7 +8,8 @@ pub struct Document<'a> {
 
 /// Parse text and paired or self-closing style tags in one pass. The node vector
 /// is the arena: no per-node allocations, copied strings, or recursive calls.
-/// Names are case-sensitive; attributes and entity decoding are not supported.
+/// Names are case-sensitive. Attribute values may be bare or quoted; unsupported
+/// attributes and invalid values are ignored. Entity decoding is not supported.
 /// Invalid tags and unmatched opening or closing tags remain literal text.
 pub fn parse(source_code: &str) -> Document<'_> {
     let bytes = source_code.as_bytes();
@@ -29,7 +30,18 @@ pub fn parse(source_code: &str) -> Document<'_> {
         let closing = bytes.get(pos) == Some(&b'/');
         pos += usize::from(closing);
         let name_start = pos;
-        while pos < bytes.len() && bytes[pos] != b'>' && bytes[pos] != b'<' {
+        let mut quote = None;
+        while pos < bytes.len() {
+            let byte = bytes[pos];
+            if let Some(delimiter) = quote {
+                if byte == delimiter {
+                    quote = None;
+                }
+            } else if matches!(byte, b'\'' | b'"') {
+                quote = Some(byte);
+            } else if matches!(byte, b'>' | b'<') {
+                break;
+            }
             pos += 1;
         }
         if bytes.get(pos) != Some(&b'>') {
@@ -37,23 +49,29 @@ pub fn parse(source_code: &str) -> Document<'_> {
             continue;
         }
         let self_closing = !closing && bytes.get(pos - 1) == Some(&b'/');
-        let name_end = pos - usize::from(self_closing);
+        let content_end = pos - usize::from(self_closing);
+        let mut name_end = name_start;
+        while name_end < content_end && !bytes[name_end].is_ascii_whitespace() {
+            name_end += 1;
+        }
         let name = &source_code[name_start..name_end];
+        let tail = &source_code[name_end..content_end];
         pos += 1;
         if closing {
             // Compare spelling as well, so aliases must still be paired exactly.
-            if let Some(&(expected, index, tag)) = stack.last()
+            if let Some(&(expected, index, tag, attributes)) = stack.last()
                 && name == expected
+                && tail.trim().is_empty()
             {
                 stack.pop();
-                nodes[index] = ShxNode::Open(tag);
+                nodes[index] = ShxNode::Open(tag, attributes);
                 nodes.push(ShxNode::Close);
             } else {
                 nodes.push(ShxNode::Text(&source_code[start..pos]));
             }
         } else if let Some(tag) = ShxNodeTag::parse(name) {
             if !self_closing {
-                stack.push((name, nodes.len(), tag));
+                stack.push((name, nodes.len(), tag, parse_attributes(tail)));
                 depth = depth.max(stack.len());
                 // Promote this to an opening node only when its closing tag appears.
                 nodes.push(ShxNode::Text(&source_code[start..pos]));
@@ -63,6 +81,54 @@ pub fn parse(source_code: &str) -> Document<'_> {
         }
     }
     Document { nodes, depth }
+}
+
+fn parse_attributes(source: &str) -> ShxAttributes {
+    let bytes = source.as_bytes();
+    let mut attributes = ShxAttributes::default();
+    let mut pos = 0;
+    while pos < bytes.len() {
+        while pos < bytes.len() && bytes[pos].is_ascii_whitespace() {
+            pos += 1;
+        }
+        let start = pos;
+        while pos < bytes.len() && !bytes[pos].is_ascii_whitespace() && bytes[pos] != b'=' {
+            pos += 1;
+        }
+        let name = &source[start..pos];
+        while pos < bytes.len() && bytes[pos].is_ascii_whitespace() {
+            pos += 1;
+        }
+        let value = if bytes.get(pos) == Some(&b'=') {
+            pos += 1;
+            while pos < bytes.len() && bytes[pos].is_ascii_whitespace() {
+                pos += 1;
+            }
+            if matches!(bytes.get(pos), Some(b'\'' | b'"')) {
+                let delimiter = bytes[pos];
+                pos += 1;
+                let start = pos;
+                while pos < bytes.len() && bytes[pos] != delimiter {
+                    pos += 1;
+                }
+                let value = &source[start..pos];
+                if pos < bytes.len() {
+                    pos += 1;
+                }
+                Some(value)
+            } else {
+                let start = pos;
+                while pos < bytes.len() && !bytes[pos].is_ascii_whitespace() {
+                    pos += 1;
+                }
+                Some(&source[start..pos])
+            }
+        } else {
+            None
+        };
+        attributes.set(name, value);
+    }
+    attributes
 }
 
 #[cfg(test)]
@@ -77,9 +143,9 @@ mod tests {
         assert_eq!(
             doc.nodes,
             [
-                ShxNode::Open(ShxNodeTag::Red),
+                ShxNode::Open(ShxNodeTag::Red, ShxAttributes::default()),
                 ShxNode::Text("hé"),
-                ShxNode::Open(ShxNodeTag::Bold),
+                ShxNode::Open(ShxNodeTag::Bold, ShxAttributes::default()),
                 ShxNode::Text("世界"),
                 ShxNode::Close,
                 ShxNode::Close,
