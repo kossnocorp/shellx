@@ -5,7 +5,7 @@ use crate::prelude::*;
     run,
     bin = "shx",
     about = "SHX, the JSX for shell scripts",
-    default_subcommand = "render"
+    default_subcommand = "print"
 )]
 pub struct ShxCli {
     #[usage(subcommand)]

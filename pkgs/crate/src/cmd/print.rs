@@ -1,7 +1,7 @@
 use crate::prelude::*;
 
 #[derive(Args, Debug)]
-pub struct ShxCmdRender {
+pub struct ShxCmdPrint {
     #[usage()]
     pub code: String,
     /// Positional values or name=value pairs for placeholders
@@ -9,7 +9,7 @@ pub struct ShxCmdRender {
     pub arguments: Vec<String>,
 }
 
-impl Run for ShxCmdRender {
+impl Run for ShxCmdPrint {
     type Output = Result<()>;
 
     fn run(self) -> Self::Output {

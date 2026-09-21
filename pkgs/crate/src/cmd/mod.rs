@@ -14,7 +14,7 @@ pub enum ShxCmd {
     /// Generates a shell function with zero-based {0} or automatic {} arguments
     Fn(ShxCmdFn),
     /// Renders SHX code
-    Render(ShxCmdRender),
-    /// Generates Bash/Zsh echo code for eval, with the same arguments as render
+    Print(ShxCmdPrint),
+    /// Generates Bash/Zsh echo code for eval, with the same arguments as print
     Source(ShxCmdSource),
 }
