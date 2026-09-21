@@ -86,6 +86,7 @@ usage = '''
 arg "<version>" help="Version to apply"
 '''
 run = '''
+#!/usr/bin/env bash
 cargo release version {{usage.version}} \
   --workspace \
   --no-confirm \
@@ -98,7 +99,8 @@ cargo release version {{usage.version}} \
 # publish ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 [tasks.publish]
 run = '''
-cargo release publish \
+#!/usr/bin/env bash
+fnox exec -- cargo release publish \
   --workspace \
   --all-features \
   --no-confirm \
@@ -109,6 +111,7 @@ cargo release publish \
 # publish:dry ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 [tasks."publish:dry"]
 run = '''
+#!/usr/bin/env bash
 cargo release publish \
   --workspace \
   --all-features \
