@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+source "$(dirname -- "${BASH_SOURCE[0]}")/_lib.sh"
+heading 'Basic controls: CR, LF, BS, HT, BEL' 'Watch each overwrite; backspace moves, but does not erase.'
+section 'CR (' '\r' '): overwrite the start of a line'
+printf '1234567890'; delay; printf '\rABC\n'
+section 'BS (' '\b' '): move left and overwrite one character'
+printf 'abc'; delay; printf '\bX\n'
+section 'HT (' '\t' '): default tab stops'
+printf 'a\tb\tc\nlonger\tb\tc\n'
+section 'LF (' '\n' '): move to the next line (usually also returns to column 1)'
+printf 'line one\nline two\n'
+section 'BEL (' '\a' '): listen for a bell or watch for a flash'
+printf '\aBell sent.\n'
+section '' 'CAN / SUB' ': cancel incomplete control sequences (expect plain text)'
+printf '\033[31\030CAN text\n\033[32\032SUB text\033[0m\n'
