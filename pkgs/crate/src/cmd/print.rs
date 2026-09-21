@@ -15,18 +15,23 @@ impl Run for ShxCmdRender {
     fn run(self) -> Self::Output {
         let document = super::interpolate::interpolate(parser::parse(&self.code), &self.arguments)?;
         let mut stdout = io::BufWriter::new(io::stdout().lock());
-        if std::env::var_os("NO_COLOR").is_some_and(|value| !value.is_empty()) {
-            for node in &document.nodes {
-                if let ShxNode::Text(text) = node {
-                    stdout.write_all(text.as_bytes())?;
-                }
-            }
-        } else {
-            render(&document, &mut stdout)?;
-        }
+        render_output(&document, &mut stdout)?;
         writeln!(stdout)?;
         stdout.flush()?;
         Ok(())
+    }
+}
+
+pub(super) fn render_output(document: &Document<'_>, out: &mut impl Write) -> io::Result<()> {
+    if std::env::var_os("NO_COLOR").is_some_and(|value| !value.is_empty()) {
+        for node in &document.nodes {
+            if let ShxNode::Text(text) = node {
+                out.write_all(text.as_bytes())?;
+            }
+        }
+        Ok(())
+    } else {
+        render(document, out)
     }
 }
 
