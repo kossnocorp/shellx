@@ -28,7 +28,7 @@ dependencies = [
 
 [[package]]
 name = "shellx"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "shellx_core",
@@ -38,11 +38,11 @@ dependencies = [
 
 [[package]]
 name = "shellx_core"
-version = "0.5.0"
+version = "0.6.0"
 
 [[package]]
 name = "shellx_macros"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "proc-macro2",
  "quote",

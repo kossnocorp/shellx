@@ -1,6 +1,6 @@
 [package]
 name = "shellx"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2024"
 description = "SHX, the JSX for shell scripts"
 authors = ["Sasha Koss <koss@nocorp.me>"]
@@ -23,5 +23,5 @@ cli = ["dep:anyhow", "dep:usage", "dep:shellx_core"]
 [dependencies]
 anyhow = { version = "1.0.104", optional = true }
 usage = { package = "usage-rs", version = "6", optional = true }
-shellx_core = { path = "../core", version = "0.5.0", optional = true }
-shellx_macros = { path = "../macros", version = "0.5.0" }
+shellx_core = { path = "../core", version = "0.6.0", optional = true }
+shellx_macros = { path = "../macros", version = "0.6.0" }
