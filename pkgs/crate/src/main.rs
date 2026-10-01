@@ -1,10 +1,6 @@
 mod prelude;
 
-mod parser;
-pub use parser::*;
-
-mod node;
-pub use node::*;
+pub use shellx_core::{Document, ShxAttributes, ShxNode, ShxNodeTag, parser};
 
 mod cli;
 pub use cli::*;

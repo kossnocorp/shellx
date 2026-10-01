@@ -10,11 +10,18 @@ repository = "https://github.com/kossnocorp/shellx"
 [[bin]]
 name = "shx"
 path = "src/main.rs"
+required-features = ["cli"]
 
 [package.metadata.binstall]
 pkg-url = "{ repo }/releases/download/v{ version }/shx-v{ version }-{ target }{ binary-ext }"
 pkg-fmt = "bin"
 
+[features]
+default = ["cli"]
+cli = ["dep:anyhow", "dep:usage", "dep:shellx_core"]
+
 [dependencies]
-anyhow = "1.0.104"
-usage = { package = "usage-rs", version = "6" }
+anyhow = { version = "1.0.104", optional = true }
+usage = { package = "usage-rs", version = "6", optional = true }
+shellx_core = { path = "../core", version = "0.5.0", optional = true }
+shellx_macros = { path = "../macros", version = "0.5.0" }
