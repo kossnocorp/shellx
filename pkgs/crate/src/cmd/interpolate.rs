@@ -7,11 +7,9 @@ pub(super) fn interpolate<'a>(
     document: Document<'a>,
     arguments: &'a [String],
 ) -> Result<Document<'a>> {
-    if !document
-        .nodes
-        .iter()
-        .any(|node| matches!(node, ShxNode::Text(text) if text.contains(['{', '}'])))
-    {
+    if !document.nodes.iter().any(
+        |node| matches!(node, ShxNode::Text(text) if text.contains("{{") || text.contains("}}")),
+    ) {
         return Ok(document);
     }
 
@@ -38,8 +36,11 @@ pub(super) fn interpolate<'a>(
         let mut pos = 0;
         while pos < bytes.len() {
             let start = pos;
-            while pos < bytes.len() && !matches!(bytes[pos], b'{' | b'}') {
-                pos += 1;
+            while pos < bytes.len()
+                && !text[pos..].starts_with("{{")
+                && !text[pos..].starts_with("}}")
+            {
+                pos += text[pos..].chars().next().unwrap().len_utf8();
             }
             if start != pos {
                 nodes.push(ShxNode::Text(&text[start..pos]));
@@ -48,23 +49,23 @@ pub(super) fn interpolate<'a>(
                 break;
             }
             let brace = bytes[pos];
-            if bytes.get(pos + 1) == Some(&brace) {
-                nodes.push(ShxNode::Text(&text[pos..pos + 1]));
-                pos += 2;
+            if bytes.get(pos + 2) == Some(&brace) && bytes.get(pos + 3) == Some(&brace) {
+                nodes.push(ShxNode::Text(&text[pos..pos + 2]));
+                pos += 4;
                 continue;
             }
             anyhow::ensure!(
                 brace == b'{',
-                "Unmatched closing brace; use }}}} for a literal brace"
+                "Unmatched closing braces; use }}}}}}}} for literal double braces"
             );
-            pos += 1;
+            pos += 2;
             let start = pos;
-            while pos < bytes.len() && bytes[pos] != b'}' {
+            while pos < bytes.len() && !(bytes[pos] == b'}' && bytes.get(pos + 1) == Some(&b'}')) {
                 pos += 1;
             }
             anyhow::ensure!(
                 pos < bytes.len(),
-                "Unclosed placeholder; use {{{{ for a literal brace"
+                "Unclosed placeholder; use {{{{{{{{ for literal double braces"
             );
             let placeholder = &text[start..pos];
             let value = if placeholder.is_empty()
@@ -85,7 +86,7 @@ pub(super) fn interpolate<'a>(
             } else {
                 anyhow::ensure!(
                     super::function::identifier(placeholder),
-                    "Invalid placeholder: {{{placeholder}}}"
+                    "Invalid placeholder: {{{{{placeholder}}}}}"
                 );
                 *named
                     .get(placeholder)
@@ -95,7 +96,7 @@ pub(super) fn interpolate<'a>(
             if !value.is_empty() {
                 nodes.push(ShxNode::Text(value));
             }
-            pos += 1;
+            pos += 2;
         }
     }
     Ok(Document {
@@ -120,28 +121,30 @@ mod tests {
     fn supports_all_placeholder_forms() {
         for (source, args, expected) in [
             (
-                "Hello, {}! {}",
+                "Hello, {{}}! {{}}",
                 vec!["Sasha", "How are you?"],
                 "Hello, Sasha! How are you?",
             ),
             (
-                "Hello, {1}! {0}",
+                "Hello, {{1}}! {{0}}",
                 vec!["How are you?", "Sasha"],
                 "Hello, Sasha! How are you?",
             ),
             (
-                "{hello}, {name}! {question}",
+                "{{hello}}, {{name}}! {{question}}",
                 vec!["name=Sasha", "hello=Hi", "question=How are you?"],
                 "Hi, Sasha! How are you?",
             ),
             (
-                "{1} {} {name} {} {0}",
+                "{{1}} {{}} {{name}} {{}} {{0}}",
                 vec!["first", "name=named", "second"],
                 "second first named second first",
             ),
-            ("{{{0}}} {{}}", vec!["世界"], "{世界} {}"),
-            ("{name}/{name}", vec!["name=a=b"], "a=b/a=b"),
-            ("a{}b{name}c", vec!["", "name="], "abc"),
+            ("{{{{{{0}}}}}} {{{{}}}}", vec!["世界"], "{{世界}} {{}}"),
+            ("{{name}}/{{name}}", vec!["name=a=b"], "a=b/a=b"),
+            ("a{{}}b{{name}}c", vec!["", "name="], "abc"),
+            ("{name} {0} {} { }", vec![], "{name} {0} {} { }"),
+            ("世界 {{name}}!", vec!["name=你好"], "世界 你好!"),
             ("plain", vec![], "plain"),
         ] {
             assert_eq!(output(source, &args).unwrap(), expected, "{source}");
@@ -152,25 +155,34 @@ mod tests {
     fn substitutions_inherit_styles_without_becoming_markup() {
         assert_eq!(
             output(
-                "<red>{}</red> <span bg=blue>{}</span>",
-                &["<bold>{name}</bold>", "世界"]
+                "<red>{{}}</red> <span bg=blue>{{}}</span>",
+                &["<bold>{{name}}</bold>", "世界"]
             )
             .unwrap(),
-            "\x1b[31m<bold>{name}</bold>\x1b[0m \x1b[44m世界\x1b[0m"
+            "\x1b[31m<bold>{{name}}</bold>\x1b[0m \x1b[44m世界\x1b[0m"
         );
-        assert_eq!(output("<red>{}</red>", &[""]).unwrap(), "");
+        assert_eq!(output("<red>{{}}</red>", &[""]).unwrap(), "");
+        assert_eq!(
+            output(
+                "<green bold>Hello, {{name}}!</green> {{{{welcome}}}}",
+                &["name=Sasha"]
+            )
+            .unwrap(),
+            "\x1b[1;32mHello, Sasha!\x1b[0m {{welcome}}"
+        );
     }
 
     #[test]
     fn invalid_or_missing_placeholders_are_errors() {
         for source in [
-            "{}",
-            "{0}",
-            "{name}",
-            "{",
-            "}",
-            "{not a name}",
-            "{999999999999999999999999999999999}",
+            "{{}}",
+            "{{0}}",
+            "{{name}}",
+            "{{",
+            "}}",
+            "{{name}",
+            "{{not a name}}",
+            "{{999999999999999999999999999999999}}",
         ] {
             assert!(output(source, &[]).is_err(), "{source}");
         }

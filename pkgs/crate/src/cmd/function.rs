@@ -40,19 +40,23 @@ fn template(text: &str, next_index: &mut usize, arguments: &mut Vec<usize>) -> R
         match ch {
             '{' if chars.peek() == Some(&'{') => {
                 chars.next();
-                format.push('{');
-            }
-            '}' if chars.peek() == Some(&'}') => {
-                chars.next();
-                format.push('}');
-            }
-            '{' => {
+                if chars.clone().take(2).eq("{{".chars()) {
+                    chars.next();
+                    chars.next();
+                    format.push_str("{{");
+                    continue;
+                }
                 let mut placeholder = String::new();
                 loop {
                     match chars.next() {
-                        Some('}') => break,
+                        Some('}') if chars.peek() == Some(&'}') => {
+                            chars.next();
+                            break;
+                        }
                         Some(ch) => placeholder.push(ch),
-                        None => anyhow::bail!("Unclosed placeholder; use {{{{ for a literal brace"),
+                        None => anyhow::bail!(
+                            "Unclosed placeholder; use {{{{{{{{ for literal double braces"
+                        ),
                     }
                 }
                 let index = if placeholder.is_empty() {
@@ -60,7 +64,7 @@ fn template(text: &str, next_index: &mut usize, arguments: &mut Vec<usize>) -> R
                 } else {
                     anyhow::ensure!(
                         placeholder.bytes().all(|byte| byte.is_ascii_digit()),
-                        "Invalid placeholder: {{{placeholder}}}; expected an index or {{}}"
+                        "Invalid placeholder: {{{{{placeholder}}}}}; expected an index or {{{{}}}}"
                     );
                     placeholder.parse::<usize>().map_err(|_| {
                         anyhow::anyhow!("Placeholder index is too large: {placeholder}")
@@ -75,7 +79,16 @@ fn template(text: &str, next_index: &mut usize, arguments: &mut Vec<usize>) -> R
                 arguments.push(position);
                 format.push_str("%s");
             }
-            '}' => anyhow::bail!("Unmatched closing brace; use }}}} for a literal brace"),
+            '}' if chars.peek() == Some(&'}') => {
+                chars.next();
+                anyhow::ensure!(
+                    chars.clone().take(2).eq("}}".chars()),
+                    "Unmatched closing braces; use }}}}}}}} for literal double braces"
+                );
+                chars.next();
+                chars.next();
+                format.push_str("}}");
+            }
             '%' => format.push_str("%%"),
             '\\' => format.push_str("\\\\"),
             ch => format.push(ch),
@@ -175,7 +188,7 @@ mod tests {
 
     #[test]
     fn attributes_work_in_colored_and_plain_functions() {
-        let code = "<span fg=red bg=gray bold>{0}</span>";
+        let code = "<span fg=red bg=gray bold>{{0}}</span>";
         assert_eq!(
             call(code, &["Hello"], false).stdout,
             b"\x1b[1;31;100mHello\x1b[0m\n"
@@ -185,7 +198,7 @@ mod tests {
 
     #[test]
     fn inferred_arguments_and_nested_styles() {
-        let code = "<red>Hello, <green>{0}</green>! {1}, {0}</red>";
+        let code = "<red>Hello, <green>{{0}}</green>! {{1}}, {{0}}</red>";
         let output = call(code, &["Sasha", "world"], false);
         assert!(output.status.success());
         assert_eq!(
@@ -202,27 +215,31 @@ mod tests {
     fn literals_and_values_are_not_interpreted() {
         let value = "<red>'\" $(exit 9) `exit 9` %s \\n\n世界";
         let output = call(
-            "'\" $(exit 9) `exit 9` 100% \\n {{name}} {0}",
+            "'\" $(exit 9) `exit 9` 100% \\n {{{{name}}}} {{0}}",
             &[value],
             true,
         );
         assert!(output.status.success());
         assert_eq!(
             String::from_utf8(output.stdout).unwrap(),
-            format!("'\" $(exit 9) `exit 9` 100% \\n {{name}} {value}\n")
+            format!("'\" $(exit 9) `exit 9` 100% \\n {{{{name}}}} {value}\n")
         );
     }
 
     #[test]
     fn checks_argument_count_including_empty_values() {
         for args in [vec![], vec!["a", "b"]] {
-            let output = call("{0}", &args, true);
+            let output = call("{{0}}", &args, true);
             assert_eq!(output.status.code(), Some(2));
             assert!(output.stdout.is_empty());
             assert_eq!(output.stderr, b"Usage: greet (1 argument)\n");
         }
-        assert_eq!(call("{0}", &[""], true).stdout, b"\n");
+        assert_eq!(call("{{0}}", &[""], true).stdout, b"\n");
         assert_eq!(call("constant", &[], true).stdout, b"constant\n");
+        assert_eq!(
+            call("{name} {0} {} { }", &[], true).stdout,
+            b"{name} {0} {} { }\n"
+        );
     }
 
     #[test]
@@ -240,44 +257,52 @@ mod tests {
             assert!(compile(name, "hello").is_err());
         }
         for code in [
-            "{",
-            "}",
-            "{name}",
-            "{-1}",
-            "{+1}",
-            "{ 0}",
-            "{not valid}",
-            "{name",
+            "{{",
+            "}}",
+            "{{name}}",
+            "{{-1}}",
+            "{{+1}}",
+            "{{ 0}}",
+            "{{not valid}}",
+            "{{name}",
             "\0",
-            "{999999999999999999999999999999}",
+            "{{999999999999999999999999999999}}",
         ] {
             assert!(compile("greet", code).is_err());
         }
-        assert!(compile("greet", &format!("{{{}}}", usize::MAX)).is_err());
+        assert!(compile("greet", &format!("{{{{{}}}}}", usize::MAX)).is_err());
     }
 
     #[test]
     fn automatic_indexes_span_style_nodes() {
         assert_eq!(
-            compile("greet", "{}").unwrap(),
-            compile("greet", "{0}").unwrap()
+            compile("greet", "{{}}").unwrap(),
+            compile("greet", "{{0}}").unwrap()
         );
-        let output = call("<red>{}</red> <green>{}</green> {}", &["a", "b", "c"], true);
+        let output = call(
+            "<red>{{}}</red> <green>{{}}</green> {{}}",
+            &["a", "b", "c"],
+            true,
+        );
         assert!(output.status.success());
         assert_eq!(output.stdout, b"a b c\n");
-        let output = call("{2} {} {0} {} {{}} {{0}}", &["a", "b", "c"], true);
+        let output = call(
+            "{{2}} {{}} {{0}} {{}} {{{{}}}} {{{{0}}}}",
+            &["a", "b", "c"],
+            true,
+        );
         assert!(output.status.success());
-        assert_eq!(output.stdout, b"c a a b {} {0}\n");
+        assert_eq!(output.stdout, b"c a a b {{}} {{0}}\n");
     }
 
     #[test]
     fn explicit_indexes_determine_arity_and_support_ten_or_more_arguments() {
-        let output = call("{2} {0} {2}", &["a", "b", "c"], true);
+        let output = call("{{2}} {{0}} {{2}}", &["a", "b", "c"], true);
         assert!(output.status.success());
         assert_eq!(output.stdout, b"c a c\n");
-        assert_eq!(call("{2}", &["a"], true).status.code(), Some(2));
+        assert_eq!(call("{{2}}", &["a"], true).status.code(), Some(2));
         let output = call(
-            "{10} {9} {0}",
+            "{{10}} {{9}} {{0}}",
             &["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
             true,
         );

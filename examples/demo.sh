@@ -79,9 +79,9 @@ cargo run --bin shx '<span fg="green" underline=true ignored="anything">Underlin
 # on a dark background.
 
 # Sequential, indexed, and named placeholders
-cargo run --bin shx 'Hello, {}! {}' 'Sasha' 'How are you?'
-cargo run --bin shx 'Hello, {1}! {0}' 'How are you?' 'Sasha'
-cargo run --bin shx '{hello}, {name}! {question}' name='Sasha' hello='Hi' question='How are you?'
+cargo run --bin shx 'Hello, {{}}! {{}}' 'Sasha' 'How are you?'
+cargo run --bin shx 'Hello, {{1}}! {{0}}' 'How are you?' 'Sasha'
+cargo run --bin shx '{{hello}}, {{name}}! {{question}}' name='Sasha' hello='Hi' question='How are you?'
 
-# Values inherit formatting; double braces produce literal braces
-cargo run --bin shx '<green bold>Hello, {name}!</green> {{welcome}}' name='Sasha'
+# Values inherit formatting; quadruple braces escape literal double braces
+cargo run --bin shx '<green bold>Hello, {{name}}!</green> {{{{welcome}}}}' name='Sasha'
